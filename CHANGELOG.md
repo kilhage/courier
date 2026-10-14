@@ -5,6 +5,9 @@ and the project uses [Semantic Versioning](https://semver.org/). Pre-1.0, minor 
 
 ## [Unreleased]
 
+### Added
+- On-screen touch controls for phones (multi-touch, landscape and portrait layouts) and a `[touch]` test suite (5 tests).
+
 ## [0.5.0] - 2026-10-14
 
 First public release. This is iteration 5 of the build; iterations 1-4 are kept under `iterations/`.

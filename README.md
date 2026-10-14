@@ -31,6 +31,10 @@ Open <http://127.0.0.1:4173/>. Any static file server works as well, because the
 | Z (or Shift / J) | Run (hold). Reach full speed to fill the P-meter |
 | X (or Space / K) | Jump (hold for a higher jump) |
 | ↓ | Crouch (big form, visual only) |
+
+**On a phone** the on-screen buttons appear automatically (◀ ▶ to move, **B** run, **A** jump, **M** mute; tap the
+screen to retry). They support multi-touch and sliding between buttons, so you can run and jump at once. Add `?touch=1`
+to force them on a desktop.
 | Enter | Retry / play again |
 | M | Mute |
 
@@ -43,7 +47,7 @@ Add `?debug` to the URL for a frame/velocity readout.
   a P-switch, a timer (41 frames per unit), a goal card roulette, a pixel-art renderer and synthesised sound.
 - **The spec** (`spec/`): every physics number with a source and a confidence label, plus a list of conflicts
   between sources and how each was resolved.
-- **The verification harness** (`harness/`, `tools/`): 91 deterministic tests that drive the game frame by
+- **The verification harness** (`harness/`, `tools/`): 96 deterministic tests that drive the game frame by
   frame through a small hook (`window.__smb3`) and check it against the spec: physics, gameplay rules, pixel-level
   visual constraints, and a lookahead planner that proves the course is completable.
 - **All iterations** (`iterations/`): frozen, playable snapshots of earlier builds with their scores, so you can
@@ -67,7 +71,7 @@ npm run verify                 # runs all suites, prints a score per group, exit
 ```
 
 ```
-root build  91/91
+root build  96/96
   physics (timing, horizontal, deceleration, vertical, pmeter, stomp)   35
   gameplay (course-frame, course-layout, enemies, blocks, goal)         37
   visual (style, sprites, motion, hero)                                 19
@@ -84,7 +88,7 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md) for how the loop works and
 | 2 | 71/87 | Fairer landing zone on the raised ledge | [iter-02](iterations/iter-02/index.html) |
 | 3 | 86/87 | Pixel-art sprites, flat NES-style palette, bitmap font, visual test suite | [iter-03](iterations/iter-03/index.html) |
 | 4 | 87/87 | Planner hooks: completability proven by search | [iter-04](iterations/iter-04/index.html) |
-| **5 (root)** | **91/91** | 12-pose hero with new proportions, hero visual tests | [index.html](index.html) |
+| **5 (root)** | **96/96** | 12-pose hero, hero visual tests, on-screen touch controls | [index.html](index.html) |
 
 Scores are recorded against the suite as it existed at that time (see `iterations/scoreboard.json`).
 Serve the repo and open `/iterations/iter-NN/` to play an older build.

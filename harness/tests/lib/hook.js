@@ -56,4 +56,4 @@ function expectNear(actual, e, label) {
 
 const firstIndex = (arr, pred) => { for (let i = 0; i < arr.length; i++) if (pred(arr[i], i)) return i; return -1; };
 
-module.exports = { SPEC, P, E, openGame, run, expectNear, firstIndex };
+module.exports = { GAME_URL, SPEC, P, E, openGame, run, expectNear, firstIndex };

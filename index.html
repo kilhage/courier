@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Courier — World 1-1</title>
 <style>
   html, body { margin: 0; background: #14161f; color: #c9d1e6; font: 13px/1.5 ui-monospace, Menlo, monospace; }
@@ -11,6 +11,23 @@
   canvas { width: min(96vw, 768px); aspect-ratio: 256 / 240; image-rendering: pixelated; background: #000; border-radius: 6px; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
   .keys { opacity: .85; text-align: center; }
   kbd { background: #262b3d; padding: 1px 6px; border-radius: 4px; border: 1px solid #3a415c; }
+
+  /* touch controls: shown on touch devices (pointer: coarse) or with ?touch=1 */
+  #touch { display: none; }
+  body.touch { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+  body.touch .keys { display: none; }
+  body.touch #touch { display: flex; justify-content: space-between; align-items: flex-end; width: min(96vw, 768px); padding: 4px 8px max(12px, env(safe-area-inset-bottom)); }
+  #touch .pad { display: flex; gap: 14px; }
+  #touch .btn { width: 76px; height: 76px; border-radius: 50%; background: rgba(120, 140, 200, .28); border: 2px solid rgba(190, 205, 255, .55); color: #e8eeff; display: flex; align-items: center; justify-content: center; font: bold 20px ui-monospace, Menlo, monospace; touch-action: none; }
+  #touch .btn.on { background: rgba(255, 212, 59, .55); border-color: #ffd43b; }
+  #touch .btn.small { width: 44px; height: 44px; font-size: 13px; }
+  #touch .col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  @media (orientation: landscape) and (max-height: 520px) {
+    .wrap { padding: 0; gap: 0; position: relative; }
+    canvas { width: min(100vw, calc(100vh * 256 / 240)); border-radius: 0; }
+    body.touch #touch { position: fixed; left: 0; right: 0; bottom: 0; width: auto; padding: 0 max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); pointer-events: none; }
+    #touch .btn { pointer-events: auto; }
+  }
 </style>
 </head>
 <body>
@@ -18,8 +35,40 @@
   <canvas id="screen" width="256" height="240" tabindex="0"></canvas>
   <div class="keys"><kbd>←</kbd><kbd>→</kbd> move · <kbd>Z</kbd> run (hold) · <kbd>X</kbd> jump (hold = higher) · <kbd>Enter</kbd> retry · <kbd>M</kbd> mute</div>
 </div>
+<div id="touch" aria-label="touch controls">
+  <div class="pad"><div class="btn" data-key="ArrowLeft">&#9664;</div><div class="btn" data-key="ArrowRight">&#9654;</div></div>
+  <div class="col"><div class="btn small" data-key="KeyM">M</div><div class="pad"><div class="btn" data-key="KeyZ">B</div><div class="btn" data-key="KeyX">A</div></div></div>
+</div>
 <script src="render.js"></script>
 <script src="game.js"></script>
-<script>document.getElementById('screen').focus();</script>
+<script>
+document.getElementById('screen').focus();
+// Touch controls: translate finger positions into the same KeyboardEvents the keyboard path uses.
+(function () {
+  var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  if (!coarse && !/[?&]touch=1/.test(location.search)) return;
+  document.body.classList.add('touch');
+  var held = {}, btns = [].slice.call(document.querySelectorAll('#touch .btn'));
+  function fire(type, code) { window.dispatchEvent(new KeyboardEvent(type, { code: code, bubbles: true })); }
+  function sync(touches) {
+    var want = {};
+    for (var i = 0; i < touches.length; i++) {
+      var el = document.elementFromPoint(touches[i].clientX, touches[i].clientY);
+      var b = el && el.closest && el.closest('.btn');
+      if (b) want[b.dataset.key] = true;
+    }
+    btns.forEach(function (b) {
+      var k = b.dataset.key, on = !!want[k];
+      if (on && !held[k]) { held[k] = true; fire('keydown', k); }
+      if (!on && held[k]) { held[k] = false; fire('keyup', k); }
+      b.classList.toggle('on', on);
+    });
+  }
+  function handle(e) { e.preventDefault(); sync(e.touches); }
+  ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(function (t) { document.addEventListener(t, handle, { passive: false }); });
+  // Tapping the screen retries after a win or a death (the game ignores Enter otherwise).
+  document.getElementById('screen').addEventListener('touchstart', function () { fire('keydown', 'Enter'); fire('keyup', 'Enter'); });
+})();
+</script>
 </body>
 </html>

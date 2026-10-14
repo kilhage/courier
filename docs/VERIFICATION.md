@@ -16,6 +16,7 @@ spec/physics-spec.json ──▶ harness/tests/*.spec.js ──drives──▶ w
 |---|---|---|---|
 | timing, horizontal, deceleration, vertical, pmeter, stomp, enemies | `physics.spec.js` | 35 | Speeds, 14-of-16-frame acceleration, skid, friction, jump heights, gravity, fall cap, P-meter timing, stomp and bounce, walker speed. Numbers come from the spec JSON; nothing numeric is hard-coded in the test |
 | course-frame, course-layout, enemies, blocks, goal, playthrough | `course.spec.js` | 37 | Timer (300, 41 frames/unit, 0 kills), pit death, determinism, enemy/coin/block counts, shell kick and slide, ledge turning, wing loss, plant cycle, block bumping, item growth, one-way platforms, switch, goal and time bonus, and **completability** |
+| touch | `touch.spec.js` | 5 | On-screen controls: visible and sized for fingers, multi-touch drives the same inputs as the keyboard, page cannot scroll or zoom |
 | visual-style, visual-sprites, visual-motion, visual-hero | `visual.spec.js` | 19 | Palette budget (≤48 colours on screen, ≤8 per sprite, binary alpha), sprite sizes vs hitboxes, 12 distinct hero poses and silhouettes, mirroring, enemy visibility and distinctness, render determinism, camera scroll, HUD contrast ≥ 4.5 |
 
 Run them with `npm run verify` (all, with a per-group table) or `npm run test:physics|course|visual`.
@@ -45,7 +46,7 @@ unfair, the test fails. `tools/shots.js` replays the winning route and takes scr
 `npm run verify` prints, for example:
 
 ```
-root build  91/91
+root build  96/96
   physics groups ... visual groups ...
 ```
 

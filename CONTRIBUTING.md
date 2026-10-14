@@ -8,7 +8,7 @@ is good when the suite still passes and, for new behaviour, when new tests descr
 ```bash
 npm install
 npm run install:browsers
-npm run verify          # must print 91/91 (or more) before you start
+npm run verify          # must print 96/96 (or more) before you start
 ```
 
 Node 18 or newer. The only dependency is `@playwright/test` (dev only, pinned).

@@ -1,7 +1,7 @@
 # CLAUDE.md: working on Courier with Claude Code
 
 Courier is a browser platformer (static site, no build step) whose behaviour is **specified numerically** in
-`spec/physics-spec.json` and **verified by 91 deterministic Playwright tests**. Your job in this repo is usually
+`spec/physics-spec.json` and **verified by 96 deterministic Playwright tests**. Your job in this repo is usually
 to *climb the score*: add a failing test for a missing behaviour, make it pass, keep everything else green.
 
 ## Setup (once per machine)
@@ -26,7 +26,7 @@ npm run install:browsers          # Chromium for Playwright
 
 **Protocol for any change**
 
-1. `npm run verify` first. It must be 91/91 (or more) before you start. If it is not, fix that first.
+1. `npm run verify` first. It must be 96/96 (or more) before you start. If it is not, fix that first.
 2. Write the failing test **before** the code (gameplay → `harness/tests/course.spec.js`, look → `visual.spec.js`,
    physics numbers → `spec/physics-spec.json`, then the constant in `game.js`).
 3. Change `game.js` / `render.js`. Re-run the single test, then the full `npm run verify`.
@@ -55,7 +55,7 @@ npm run install:browsers          # Chromium for Playwright
 |---|---|
 | `index.html`, `game.js`, `render.js` | The newest build. `game.js` = simulation + hook + realtime loop; `render.js` = sprites, font, drawing |
 | `spec/` | `physics-spec.json` (tests read it), `physics-spec.md` (human version, sources, conflicts) |
-| `harness/tests/` | `physics.spec.js` (35), `course.spec.js` (37), `visual.spec.js` (19), `lib/hook.js` helpers |
+| `harness/tests/` | `physics.spec.js` (35), `course.spec.js` (37), `visual.spec.js` (19), `touch.spec.js` (5), `lib/hook.js` helpers |
 | `tools/` | `serve.js`, `score.js`, `shots.js`, `heroSheet.js` |
 | `iterations/` | Frozen older builds, `scoreboard.json`, per-iteration screenshots |
 | `docs/` | `ARCHITECTURE.md`, `VERIFICATION.md`, `MAINTAINING.md`, `GAME-HOOK.md`, `fidelity-checklist.md` |
