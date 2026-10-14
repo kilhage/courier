@@ -1,0 +1,392 @@
+{
+  "title": "Super Mario Bros. 3 (NES) - World 1-1 physics spec for browser re-implementation",
+  "spec_version": "1.0.0",
+  "generated": "2026-10-14",
+  "scope": "Small and Super (big) Mario on flat ground in World 1-1: walking/running, acceleration/deceleration, jumping, gravity, P-meter, stomping. Raccoon flight, slopes, water, ice and items beyond the Goomba stomp are out of scope except where noted.",
+  "units": {
+    "frame": "one NTSC NES frame (about 1/60.0988 s). All timing is in frames; the harness never uses wall-clock time.",
+    "subpx": "1/16 pixel. SMB3 stores X/Y velocity as 4.4 fixed point: high nibble = whole pixels, low nibble = 1/16 px. A velocity of 40 subpx/frame = 2.5 px/frame.",
+    "velocity": "subpx/frame (1/16 px per frame). px/frame equivalents are given alongside.",
+    "acceleration": "subpx/frame per frame",
+    "position": "pixels, y grows downward",
+    "confidence": {
+      "high": "read directly from a disassembly constant or code path AND consistent with at least one independent source (or a trivially direct constant)",
+      "medium": "single source, or depends on my interpretation of routine ordering / counter phase, or derived by simulation from high-confidence constants",
+      "low": "guess, community anecdote, or unverified"
+    }
+  },
+  "smb1_warning": "Do NOT reuse Super Mario Bros. 1 numbers. SMB1 stores vertical speed as whole pixels plus a 1/256 fraction with jump-dependent gravity (e.g. 0x30 rising vs 0xA8 falling) and a 5 px/frame fall clamp, and uses three acceleration magnitudes that double when Mario faces away from his motion. SMB3 uses 4.4 fixed-point velocities, a two-value gravity (1 or 5 subpx/frame^2) and a 4 px/frame fall cap. SMB1 and SMB3 happen to share 1.5 / 2.5 px/frame walk/run caps, which makes the mix-up easy to miss.",
+  "sources": {
+    "DIS": {"name": "Southbird SMB3 disassembly (community, GitHub) - pinned commit 09b1bd8", "url": "https://github.com/captainsouthbird/smb3/tree/09b1bd81a788de8ceec664a34094e84ddb463117", "kind": "disassembly"},
+    "DC_NOTES": {"name": "Data Crystal - Super Mario Bros. 3/Notes", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "kind": "disassembly notes"},
+    "DC_RAM": {"name": "Data Crystal - Super Mario Bros. 3/RAM map", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3:RAM_map", "kind": "RAM map"},
+    "TAS_GR": {"name": "TASVideos Game Resources - NES Super Mario Bros 3", "url": "https://tasvideos.org/GameResources/NES/SuperMarioBros3", "kind": "TAS analysis"},
+    "TAS_NITSUJA": {"name": "TASVideos forum, SMB3 topic, post by nitsuja (2007)", "url": "https://tasvideos.org/Forum/Posts/134896", "kind": "TAS forum"},
+    "TAS_RANDIL": {"name": "TASVideos forum, SMB3 topic, post by Randil (2007)", "url": "https://tasvideos.org/Forum/Posts/150713", "kind": "TAS forum"},
+    "TAS_6274": {"name": "TASVideos submission #6274 (SMB3 warps, Lord_Tom/Maru/Tompa)", "url": "https://tasvideos.org/6274S", "kind": "TAS submission notes"},
+    "TAS_8578": {"name": "TASVideos submission #8578 (SMB3Mix ROM hack 100%, Mizumaririn)", "url": "https://tasvideos.org/8578S", "kind": "TAS submission notes (hack - lower weight)"},
+    "TAS_5862": {"name": "TASVideos submission #5862 (SMB1 warpless, MrWint) - SMB1 contrast only", "url": "https://tasvideos.org/5862S", "kind": "TAS submission notes (SMB1)"},
+    "DC_SMB1": {"name": "Data Crystal - Super Mario Bros./Notes (SMB1 contrast only)", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros.:Notes", "kind": "disassembly notes (SMB1)"},
+    "SW_ENEMIES": {"name": "StrategyWiki - Super Mario Bros. 3/Enemies", "url": "https://strategywiki.org/wiki/Super_Mario_Bros._3/Enemies", "kind": "strategy guide"},
+    "MW_11": {"name": "Super Mario Wiki - World 1-1 (Super Mario Bros. 3)", "url": "https://www.mariowiki.com/World_1-1_(Super_Mario_Bros._3)", "kind": "wiki"},
+    "NESDEV_FPS": {"name": "nesdev forum - NTSC frame rate (quotes NESdev wiki cycle reference chart)", "url": "https://forums.nesdev.org/viewtopic.php?t=25364", "kind": "hardware reference"}
+  },
+  "params": {
+    "t.frame_rate": {
+      "section": "timing", "value": 60.0988, "unit": "frames/s",
+      "meaning": "NTSC NES frame rate. Use fixed-timestep simulation at this rate (or 60) and step physics per frame.",
+      "sources": [{"id": "NESDEV_FPS", "url": "https://forums.nesdev.org/viewtopic.php?t=25364", "note": "NTSC frame rate is 60.0988 frames per second"}],
+      "confidence": "high"
+    },
+    "v.order": {
+      "section": "timing", "value": "apply X vel -> apply Y vel (with fall clamp) -> horizontal control -> jump/gravity -> P-meter -> floor collision -> timers -> enemies/stomp",
+      "unit": "per-frame order",
+      "meaning": "Velocities computed in frame N move Mario in frame N+1. Stomp bounce is set after the player update, so no gravity is added on the stomp frame.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L1839", "note": "Player_ApplyXVelocity / ApplyYVelocity are called before GndMov_* (GroundHControl, JumpFlyFlutter); Player_PowerUpdate and Player_DetectSolids follow (prg008.asm L924-L940)"},
+        {"id": "TAS_8578", "url": "https://tasvideos.org/8578S", "note": "states that SMB3 applies velocities one frame late"}
+      ],
+      "confidence": "medium"
+    },
+    "h.walk_max": {
+      "section": "horizontal", "value": 24, "unit": "subpx/frame", "px_per_frame": 1.5,
+      "meaning": "Top ground/air speed without B.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/smb3.asm#L3559", "note": "PLAYER_TOPWALKSPEED = $18; comment says velocities are 4.4 fixed point"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'If WALKING, the limit is 18' (page convention: values are hex)"},
+        {"id": "TAS_GR", "url": "https://tasvideos.org/GameResources/NES/SuperMarioBros3", "note": "Walking/swimming max 24 = 1.5 px/frame"}
+      ],
+      "confidence": "high"
+    },
+    "h.run_max": {
+      "section": "horizontal", "value": 40, "unit": "subpx/frame", "px_per_frame": 2.5,
+      "meaning": "Top speed while holding B before the P-meter is full (on ground and in air).",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/smb3.asm#L3560", "note": "PLAYER_TOPRUNSPEED = $28"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'The limit is raised to 28' (hex)"},
+        {"id": "TAS_GR", "url": "https://tasvideos.org/GameResources/NES/SuperMarioBros3", "note": "Run-no P max 40 = 2.5 px/frame"}
+      ],
+      "confidence": "high"
+    },
+    "h.pspeed_max": {
+      "section": "horizontal", "value": 56, "unit": "subpx/frame", "px_per_frame": 3.5,
+      "meaning": "Top speed while holding B with a full P-meter.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/smb3.asm#L3561", "note": "PLAYER_TOPPOWERSPEED = $38"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'The limit is raised to 38' when P blinks (hex)"},
+        {"id": "TAS_GR", "url": "https://tasvideos.org/GameResources/NES/SuperMarioBros3", "note": "Run+P max 56 = 3.5 px/frame"}
+      ],
+      "confidence": "high"
+    },
+    "h.abs_max": {
+      "section": "horizontal", "value": 64, "unit": "subpx/frame", "px_per_frame": 4.0,
+      "meaning": "Hard clamp applied before moving (only reachable by slopes/sliding; not reachable on flat 1-1 ground).",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L6850", "note": "Player_ApplyXVelocity caps |XVel| at PLAYER_MAXSPEED = $40"},
+        {"id": "TAS_GR", "url": "https://tasvideos.org/GameResources/NES/SuperMarioBros3", "note": "lists 'Sliding 63' - see conflict C6"}
+      ],
+      "confidence": "medium"
+    },
+    "h.accel_counter": {
+      "section": "horizontal", "value": 16, "unit": "frames per cycle",
+      "meaning": "A global counter is updated once per frame as W = ((W & 0xF0) - 0x90) & 0xFF, so its high nibble visits all 16 values in a 16-frame cycle. Acceleration/friction add a 'pseudo-fraction' to W and use the carry as a +1/0 decision. This is the 'acceleration framerule' TASers refer to.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L340", "note": "LDA Counter_Wiggly / AND #$F0 / SUB #$90 / STA Counter_Wiggly, immediately before JSR Player_Update"},
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L2491", "note": "ADD Counter_Wiggly, carry added to Player_XVel"},
+        {"id": "TAS_6274", "url": "https://tasvideos.org/6274S", "note": "mentions 'acceleration framerules' that had to line up"}
+      ],
+      "confidence": "medium"
+    },
+    "h.accel_normal": {
+      "section": "horizontal", "value": 14, "unit": "subpx/frame gained per 16 frames", "px_per_frame": null,
+      "average": 0.875,
+      "meaning": "Pressing toward the direction of motion below the current cap: +1 subpx/frame on exactly 14 of every 16 consecutive frames (main 0, pseudo-fraction $E0), i.e. 0.875 subpx/frame^2 average. Identical for all ground forms (small/big/fire/leaf) and identical with or without B. Also applies in the air.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L1141", "note": "Player_XAccelMain 'N' column = 0; Player_XAccelPseudoFrac 'N' column = $E0 (L1167) for Small/Big/Fire/Leaf, with and without B"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'start to increase ... at around 1 per frame' (exact increment marked to-do); 'same acceleration is always used when walking/running/dashing'"},
+        {"id": "TAS_NITSUJA", "url": "https://tasvideos.org/Forum/Posts/134896", "note": "'Holding B makes absolutely no difference to the rate of acceleration or deceleration'"}
+      ],
+      "confidence": "high",
+      "confidence_note": "14/16 ratio high; the exact frames of the 2 skipped steps depend on the counter phase (medium) - the harness only checks 16-frame windows, which are phase-independent.",
+      "conflict": "C1"
+    },
+    "d.skid": {
+      "section": "deceleration", "value": 2, "unit": "subpx/frame^2",
+      "meaning": "Pressing opposite to the direction of motion (skid/turn): exactly -2 subpx/frame every frame until the velocity sign flips, all forms, ground and air.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L1141", "note": "'S' (skid) column: main 2, pseudo-fraction $00 (no counter carry possible)"},
+        {"id": "TAS_NITSUJA", "url": "https://tasvideos.org/Forum/Posts/134896", "note": "B does not change deceleration"}
+      ],
+      "confidence": "high"
+    },
+    "d.friction_small": {
+      "section": "deceleration", "value": 10, "unit": "subpx/frame lost per 16 frames", "average": 0.625,
+      "meaning": "No left/right input on the ground, small Mario: -1 on 10 of every 16 frames (main -1, pseudo-fraction $60). Also used when on the ground above the current cap (e.g. B released at 40).",
+      "sources": [{"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L1167", "note": "'F' column: Small = $60 (Tanooki/Hammer also $60)"}],
+      "confidence": "medium"
+    },
+    "d.friction_big": {
+      "section": "deceleration", "value": 14, "unit": "subpx/frame lost per 16 frames", "average": 0.875,
+      "meaning": "Same as d.friction_small for Super/Fire/Raccoon Mario (pseudo-fraction $20): big Mario stops faster than small Mario.",
+      "sources": [{"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L1167", "note": "'F' column: Big/Fire/Leaf = $20"}],
+      "confidence": "medium"
+    },
+    "d.no_air_friction": {
+      "section": "deceleration", "value": true, "unit": "bool",
+      "meaning": "In the air, no input = no deceleration, and being above the current cap (e.g. B released mid-jump at 40) does not slow Mario either. Only skid (-2) or normal acceleration change vx in the air.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L2320", "note": "Player_GroundHControl returns early when Player_InAir is set and no L/R is held, and when over the cap in the air"}
+      ],
+      "confidence": "high"
+    },
+    "v.jump_vy": {
+      "section": "vertical", "value": -56, "unit": "subpx/frame", "px_per_frame": -3.5,
+      "meaning": "Base take-off velocity, same for every form. Jump starts only on a NEW press of A while on the ground.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/smb3.asm#L3563", "note": "PLAYER_JUMP = -$38"},
+        {"id": "DC_RAM", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3:RAM_map", "note": "'(C8) Initial velocity for player jump' ($C8 = -56)"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "$AC5A jump power routine"}
+      ],
+      "confidence": "high"
+    },
+    "v.jump_speed_bonus": {
+      "section": "vertical", "value": [0, 2, 4, 8], "unit": "subpx/frame subtracted, indexed by |vx| >> 4",
+      "meaning": "|vx| 0-15 -> -56, 16-31 -> -58, 32-47 -> -60, 48-63 -> -64. So walking (24) jumps at -58, running (40) at -60, P-speed (56) at -64.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L1204", "note": "Player_SpeedJumpInc: .byte $00, $02, $04, $08"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'Divide by 16 ... using the table 00,02,04,08'"}
+      ],
+      "confidence": "high"
+    },
+    "v.gravity_held": {
+      "section": "vertical", "value": 1, "unit": "subpx/frame^2",
+      "meaning": "Gravity while airborne, A held and vy < -32 (rising fast). Also applies on the take-off frame itself.",
+      "sources": [
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "$ACA1: 'Y = jump gravity (lower than normal)' = 1 when jump held and v vel still faster than E0"},
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L2644", "note": "PRG008_ACB3: Y=5; if YVel < -$20 and A held, Y=1; YVel += Y"}
+      ],
+      "confidence": "high"
+    },
+    "v.gravity": {
+      "section": "vertical", "value": 5, "unit": "subpx/frame^2",
+      "meaning": "Gravity in all other airborne cases (A released, or vy >= -32, or falling).",
+      "sources": [
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'LDY #$05 ; Y = default falling gravity'"},
+        {"id": "DC_RAM", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3:RAM_map", "note": "'(05) Mario falling gravity, added to Y vel each frame'"},
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L2644", "note": "LDY #$05"}
+      ],
+      "confidence": "high"
+    },
+    "v.gravity_threshold": {
+      "section": "vertical", "value": -32, "unit": "subpx/frame",
+      "meaning": "Light gravity (1) only while vy < -32 (= -2 px/frame). Once vy >= -32 the jump is 'aborted' to gravity 5 even if A is still held.",
+      "sources": [
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "CMP #$E0 ($E0 = -32); jumps aborted when the button is released or 00CF is more positive than E0"},
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L2644", "note": "CMP #-$20 / BGS (signed)"}
+      ],
+      "confidence": "high", "conflict": "C5"
+    },
+    "v.fall_cap": {
+      "section": "vertical", "value": 64, "unit": "subpx/frame", "px_per_frame": 4.0,
+      "meaning": "Before moving each frame, vy >= 64 is clamped to 64, so Mario never falls more than 4 px/frame. Because gravity is added after the move, a RAM/debug readout at end of frame can show up to 69.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg024.asm#L21", "note": "FALLRATE_MAX = $40, used by Player_ApplyYVelocity (prg008.asm L6941)"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'#$40 is the maximum fall vel (note: gravity is added afterwards so the effective value is 45)'"},
+        {"id": "TAS_8578", "url": "https://tasvideos.org/8578S", "note": "'Nominal falling terminal velocity is 69, but is actually 64' (3Mix hack, same engine)"}
+      ],
+      "confidence": "high", "conflict": "C3"
+    },
+    "v.new_press_required": {
+      "section": "vertical", "value": true, "unit": "bool",
+      "meaning": "Holding A through a landing does not re-jump; the jump checks the newly-pressed input, gravity checks the held input.",
+      "sources": [{"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L2548", "note": "Player_JumpFlyFlutter reads Pad_Input (new presses) for take-off; gravity block reads Pad_Holding"}],
+      "confidence": "high"
+    },
+    "p.levels": {
+      "section": "pmeter", "value": 7, "unit": "levels (6 arrows + P)",
+      "meaning": "Power is a 7-bit shift register (0, 1, 3, 7, ... $7F). Gain = shift left with a 1; loss = shift right. $7F = full (P flashing).",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/smb3.asm#L977", "note": "Player_Power: '>>>>>>[P] charge level ($7F max)'"},
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L981", "note": "Player_PowerUpdate: SEC/ROL to gain, ROR/LSR to lose"}
+      ],
+      "confidence": "high"
+    },
+    "p.run_condition": {
+      "section": "pmeter", "value": 40, "unit": "subpx/frame (|vx| at start of frame)",
+      "meaning": "An arrow can only be gained on a frame where Mario is on the ground, holding B, not sliding, and |vx| >= 40 (run cap). In the air the meter only drains (unless a P-jump timer is running).",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L2320", "note": "GroundHControl: INC Player_RunFlag only if B held, not in air/sliding and |XVel| >= PLAYER_TOPRUNSPEED"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'When abs($BD) is >= 28, you are DASHING and the P-timer $515 cycles'"}
+      ],
+      "confidence": "high"
+    },
+    "p.gain_period": {
+      "section": "pmeter", "value": 8, "unit": "frames per arrow",
+      "meaning": "While the run condition holds, one arrow every 8 frames. The first arrow comes on the first qualifying frame if the timer is idle. RAM shows the timer as 7 after each gain because it is decremented later in the same frame.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L981", "note": "LDY #$08 when running, stored to Player_PMeterCnt; counters decremented after Player_Update (L378)"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'the P-timer $515 cycles from 7. Every time it elapses an arrow is added'"},
+        {"id": "TAS_RANDIL", "url": "https://tasvideos.org/Forum/Posts/150713", "note": "'$0515 ... 7 if you're running on ground'"}
+      ],
+      "confidence": "high", "conflict": "C4"
+    },
+    "p.loss_period": {
+      "section": "pmeter", "value": 24, "unit": "frames per arrow",
+      "meaning": "When not satisfying the run condition (and no P-jump timer), one arrow is lost every 24 frames.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L981", "note": "LDY #$18 when not running"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'the P-timer $515 cycles from 23. Every time it elapses an arrow is removed'"},
+        {"id": "TAS_RANDIL", "url": "https://tasvideos.org/Forum/Posts/150713", "note": "'... and 23 if you're in mid-air'"}
+      ],
+      "confidence": "high", "conflict": "C4"
+    },
+    "p.full_hold": {
+      "section": "pmeter", "value": 16, "unit": "frames",
+      "meaning": "While running at full power the timer is re-armed to 16 every frame (reads 0F in RAM), so the first arrow is lost 16 frames after Mario stops qualifying; later arrows every 24.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L981", "note": "LDY #$10 at full power while running"},
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'The P-timer is LOCKED to the value 0F'"}
+      ],
+      "confidence": "high"
+    },
+    "p.pjump_timer": {
+      "section": "pmeter", "value": 256, "unit": "frames ($80, decremented every other frame)",
+      "meaning": "Jumping with full power starts a timer that keeps the meter full in the air (Raccoon uses it to fly). Small/Big lose it on landing.",
+      "sources": [
+        {"id": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "note": "'The flight duration timer $56E is set to 80 and decrements every other frame'"},
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L2596", "note": "STA Player_FlyTime = $80 when Player_Power = $7F; cleared on ground for forms without flight"}
+      ],
+      "confidence": "high"
+    },
+    "s.bounce_vy": {
+      "section": "stomp", "value": -64, "unit": "subpx/frame", "px_per_frame": -4.0,
+      "meaning": "Stomping an enemy sets vy = -64 (stronger than any jump). Normal jump gravity rules then apply, so holding A gives a much higher bounce.",
+      "sources": [{"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg000.asm#L3940", "note": "'Set Player's Y velocity to -$40 (bounce!)'"}],
+      "confidence": "high"
+    },
+    "s.stomp_condition": {
+      "section": "stomp", "value": "vy >= 0, or already killed something this airtime (kill tally > 0)",
+      "unit": "rule",
+      "meaning": "Touching an enemy while moving upward hurts Mario unless he has already stomped/killed something since last touching the ground.",
+      "sources": [{"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg000.asm#L3809", "note": "after the height test: if YVel < 0 and not flying and Kill_Tally = 0 -> hurt"}],
+      "confidence": "high"
+    },
+    "s.stomp_window": {
+      "section": "stomp", "value": 13, "unit": "px (feet below enemy top)",
+      "meaning": "Stomp height test: Player_Y must be at least 19 px above the enemy's Y (17 for two special enemies). With a 32-px player frame for both sizes this means the feet may be at most ~13 px below a 16-px enemy's top. Interpretation of the player frame height is mine.",
+      "sources": [{"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg000.asm#L3809", "note": "LDY #19 'height above object considered stompable range'"}],
+      "confidence": "medium"
+    },
+    "s.chain": {
+      "section": "stomp", "value": [100, 200, 400, 800, 1000, 2000, 4000, 8000, "1UP"], "unit": "points per consecutive stomp",
+      "meaning": "Kill tally increments per stomp without touching the ground; reset on landing. Further stomps after 8000 keep giving 1UPs.",
+      "sources": [
+        {"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/smb3.asm#L2134", "note": "score values list; stomp calls Score_Get100PlusPts with Kill_Tally (prg000.asm L3979); Kill_Tally reset on landing (prg008.asm L4651)"},
+        {"id": "SW_ENEMIES", "url": "https://strategywiki.org/wiki/Super_Mario_Bros._3/Enemies", "note": "first enemy 100, then 200, 400, 800, 1000, 2000, 4000, 8000, then extra lives"}
+      ],
+      "confidence": "high"
+    },
+    "e.walker_vx": {
+      "section": "enemies", "value": 8, "unit": "subpx/frame", "px_per_frame": 0.5,
+      "meaning": "Walking speed of Goomba / Koopa Troopa / Para-Goomba ground walk (ground-troop group).",
+      "sources": [{"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg004.asm#L3994", "note": "GroundTroop_XVel: -$08, $08 (object IDs $6C-$74 share ObjInit_GroundTroop)"}],
+      "confidence": "medium"
+    },
+    "e.object_gravity": {
+      "section": "enemies", "value": 3, "unit": "subpx/frame^2 (max fall 64)",
+      "meaning": "Default object gravity for objects using the standard mover (many enemies write their own).",
+      "sources": [{"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/smb3.asm#L3571", "note": "OBJECT_FALL = $03, OBJECT_MAXFALL = $40"}],
+      "confidence": "medium"
+    },
+    "e.shell_kick_vx": {
+      "section": "enemies", "value": 48, "unit": "subpx/frame (+ Mario vx/2 if moving the same way)",
+      "meaning": "Kicked shell speed.",
+      "sources": [{"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg000.asm#L2794", "note": "ObjectKickXVelMoving: -$30, $30; Player_XVel/2 added when same sign"}],
+      "confidence": "medium"
+    },
+    "e.mushroom_vx": {
+      "section": "enemies", "value": 16, "unit": "subpx/frame", "px_per_frame": 1.0,
+      "meaning": "Super Mushroom horizontal speed; initial direction chosen from Mario's X (tile parity per the disassembly comment).",
+      "sources": [{"id": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg001.asm#L1723", "note": "Mushroom_SetXVel: $10 or -$10"}],
+      "confidence": "medium"
+    }
+  },
+  "expectations": {
+    "_note": "Derived, testable numbers. 'derived' values were computed by stepping the rules above frame by frame (see physics-spec.md, 'Derivations'); tolerance is what the harness allows.",
+    "accel_16_frames": {"value": 14, "tolerance": 0, "unit": "subpx/frame", "from": ["h.accel_normal", "h.accel_counter"], "confidence": "high"},
+    "accel_32_frames": {"value": 28, "tolerance": 0, "unit": "subpx/frame", "from": ["h.accel_normal"], "confidence": "high"},
+    "skid_5_frames_from_40": {"value": 30, "tolerance": 0, "unit": "subpx/frame", "from": ["d.skid"], "confidence": "high"},
+    "friction_small_16_from_24": {"value": 14, "tolerance": 0, "unit": "subpx/frame", "from": ["d.friction_small"], "confidence": "medium"},
+    "friction_big_16_from_24": {"value": 10, "tolerance": 0, "unit": "subpx/frame", "from": ["d.friction_big"], "confidence": "medium"},
+    "jump_height_held_vx0": {"value": 70.6875, "tolerance": 1.0, "unit": "px", "from": ["v.jump_vy", "v.gravity_held", "v.gravity", "v.gravity_threshold", "v.order"], "confidence": "medium"},
+    "jump_height_held_vx24": {"value": 77.75, "tolerance": 1.0, "unit": "px", "from": ["v.jump_speed_bonus"], "confidence": "medium"},
+    "jump_height_held_vx40": {"value": 85.0625, "tolerance": 1.0, "unit": "px", "from": ["v.jump_speed_bonus"], "confidence": "medium"},
+    "jump_height_held_vx56": {"value": 100.4375, "tolerance": 1.0, "unit": "px", "from": ["v.jump_speed_bonus"], "confidence": "medium"},
+    "jump_height_tap_vx0": {"value": 20.625, "tolerance": 1.0, "unit": "px (A held on the take-off frame only)", "from": ["v.gravity"], "confidence": "medium"},
+    "jump_apex_frame_held_vx0": {"value": 30, "tolerance": 1, "unit": "frames after take-off frame", "from": ["v.gravity_held"], "confidence": "medium"},
+    "jump_airtime_held_vx0": {"value": 54, "tolerance": 2, "unit": "frames after take-off frame until landing", "from": ["v.gravity"], "confidence": "medium"},
+    "takeoff_vy_delta_vx56_minus_vx0": {"value": -8, "tolerance": 0, "unit": "subpx/frame", "from": ["v.jump_speed_bonus"], "confidence": "high"},
+    "fall_max_px_per_frame": {"value": 4.0, "tolerance": 0, "unit": "px/frame", "from": ["v.fall_cap"], "confidence": "high"},
+    "pmeter_full_after_first_arrow": {"value": 48, "tolerance": 0, "unit": "frames", "from": ["p.gain_period", "p.levels"], "confidence": "high"},
+    "pmeter_full_from_rest": {"value": 94, "tolerance": 2, "unit": "frames holding Right+B from standstill", "from": ["h.accel_normal", "p.gain_period"], "confidence": "medium"},
+    "pmeter_first_loss_after_stop": {"value": 16, "tolerance": 1, "unit": "frames", "from": ["p.full_hold"], "confidence": "medium"},
+    "bounce_height_held": {"value": 104.4375, "tolerance": 1.5, "unit": "px above stomp point", "from": ["s.bounce_vy", "v.gravity_held"], "confidence": "medium"},
+    "bounce_height_released": {"value": 27.625, "tolerance": 1.0, "unit": "px above stomp point", "from": ["s.bounce_vy", "v.gravity"], "confidence": "medium"},
+    "walker_px_per_32_frames": {"value": 16, "tolerance": 0, "unit": "px", "from": ["e.walker_vx"], "confidence": "medium"}
+  },
+  "conflicts": [
+    {"id": "C1", "topic": "Horizontal acceleration (the requested Data Crystal vs TASVideos disagreement)",
+     "claims": [
+       {"source": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "claim": "velocity increases 'at around 1 per frame' (exact increment marked to-do)"},
+       {"source": "TAS_6274", "url": "https://tasvideos.org/6274S", "claim": "acceleration is gated by 'acceleration framerules' that must line up (i.e. not a flat 1/frame)"},
+       {"source": "TAS_NITSUJA", "url": "https://tasvideos.org/Forum/Posts/134896", "claim": "acceleration needs carefully timed input sequences; B does not change the rate"}
+     ],
+     "chosen": "+1 subpx/frame on 14 of every 16 frames (0.875 average), set by a 16-frame global counter; skid = exactly 2/frame; friction = 10/16 (small) or 14/16 (big).",
+     "why": "The disassembly shows the mechanism that reconciles both: whole-part 0 plus a carry from pseudo-fraction $E0 added to a counter that steps through 16 values. Data Crystal's 'around 1' is this 0.875 average, rounded; the TAS 'framerule' is the 16-frame counter. A literal 1/frame would reach walk speed in 24 frames instead of about 28."},
+    {"id": "C2", "topic": "Speed caps written as 18/28/38 vs 24/40/56",
+     "claims": [
+       {"source": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "claim": "limits 18, 28, 38"},
+       {"source": "TAS_GR", "url": "https://tasvideos.org/GameResources/NES/SuperMarioBros3", "claim": "limits 24, 40, 56"}
+     ],
+     "chosen": "24 / 40 / 56 decimal subpx/frame",
+     "why": "Not a real conflict: Data Crystal states its values are hexadecimal ($18 = 24, $28 = 40, $38 = 56), confirmed by the disassembly constants. Listed because a reader taking '18' as decimal would build a much slower Mario."},
+    {"id": "C3", "topic": "Terminal fall velocity: 64 vs 69 ($45)",
+     "claims": [
+       {"source": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "claim": "max fall $40, 'effective value is 45' because gravity is added afterwards"},
+       {"source": "TAS_8578", "url": "https://tasvideos.org/8578S", "claim": "'Nominal falling terminal velocity is 69, but is actually 64'"},
+       {"source": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L6941", "claim": "Player_ApplyYVelocity clamps to FALLRATE_MAX = $40 before moving"}
+     ],
+     "chosen": "Displacement capped at 64 subpx (4 px) per frame; a velocity readout may legitimately show up to 69.",
+     "why": "All three agree once ordering is considered: clamp-then-move-then-add-gravity. The harness therefore asserts on per-frame displacement, not on the velocity readout."},
+    {"id": "C4", "topic": "P-meter timer: 7/23 vs 8/24, and which RAM address",
+     "claims": [
+       {"source": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "claim": "P-timer $515 'cycles from 7' (gain) and 'from 23' (loss)"},
+       {"source": "TAS_NITSUJA", "url": "https://tasvideos.org/Forum/Posts/134896", "claim": "next-P-increase address is $55D"},
+       {"source": "TAS_RANDIL", "url": "https://tasvideos.org/Forum/Posts/150713", "claim": "address is $0515, not $055D; 7 when running on the ground, 23 in mid-air"},
+       {"source": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L981", "claim": "timer reloaded with 8 / $18 (24); all such counters decremented after the player update"}
+     ],
+     "chosen": "Gain every 8 frames, loss every 24 frames (timer address $0515).",
+     "why": "7/23 are the values visible in RAM at end of frame because of the same-frame decrement; the period is reload value = 8/24. Randil's 'mid-air = 23' is the loss timer (the run flag cannot be set in the air). nitsuja's $55D was corrected by Randil and by the disassembly."},
+    {"id": "C5", "topic": "Meaning of the $E0 value near the gravity code",
+     "claims": [
+       {"source": "DC_RAM", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3:RAM_map", "claim": "'(E0) Default upward velocity for jumps'"},
+       {"source": "DC_NOTES", "url": "https://datacrystal.tcrf.net/wiki/Super_Mario_Bros._3/Notes", "claim": "$E0 is compared against vertical velocity to decide jump gravity"}
+     ],
+     "chosen": "$E0 (-32) is the light-gravity threshold, not a jump velocity; take-off velocity is -56 - bonus.",
+     "why": "The Notes page and the disassembly show it as a CMP operand; the RAM-map line also mislabels ROM addresses as RAM."},
+    {"id": "C6", "topic": "Absolute X speed cap 63 vs 64 (also 'Flying 23 = 1.958 px/frame')",
+     "claims": [
+       {"source": "TAS_GR", "url": "https://tasvideos.org/GameResources/NES/SuperMarioBros3", "claim": "Sliding max 63 (3.938 px/frame); Flying max 23 listed as 1.958 px/frame"},
+       {"source": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/PRG/prg008.asm#L6850", "claim": "clamp to PLAYER_MAXSPEED = $40 (64)"}
+     ],
+     "chosen": "64 (medium confidence); irrelevant on flat 1-1 ground.",
+     "why": "The TAS table is internally inconsistent (23/16 = 1.4375, not 1.958), so its fine print is weak evidence. 63 may be the practical maximum on slopes. Not tested by the harness."},
+    {"id": "C7", "topic": "Acceleration-counter RAM address $55C vs $55D",
+     "claims": [
+       {"source": "TAS_6274", "url": "https://tasvideos.org/6274S", "claim": "acceleration framerules ($55d)"},
+       {"source": "DIS", "url": "https://github.com/captainsouthbird/smb3/blob/09b1bd81a788de8ceec664a34094e84ddb463117/smb3.asm#L1614", "claim": "Counter_Wiggly (the value added to the acceleration pseudo-fraction) sits at $055C; $055D is Counter_7to0"}
+     ],
+     "chosen": "Model the behaviour (16-frame cycle, 14/16 carries); the address is unresolved.",
+     "why": "This does not change any number in the spec. A RAM watch in an emulator would settle which byte TASers meant."}
+  ]
+}

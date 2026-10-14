@@ -1,0 +1,18 @@
+# dependencies
+node_modules/
+
+# test and tool output (regenerate with npm run verify / npm run shots)
+test-results/
+playwright-report/
+reports/
+
+# local and OS noise
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# local Claude Code state (project commands in .claude/commands ARE tracked)
+.claude/settings.local.json
+CLAUDE.local.md

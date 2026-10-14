@@ -1,0 +1,393 @@
+[
+  {
+    "iter": "iter-01",
+    "label": "baseline: physics port + rects art",
+    "pass": 71,
+    "total": 87,
+    "groups": {
+      "course-frame": {
+        "pass": 5,
+        "total": 5
+      },
+      "course-layout": {
+        "pass": 11,
+        "total": 11
+      },
+      "enemies": {
+        "pass": 10,
+        "total": 10
+      },
+      "blocks": {
+        "pass": 9,
+        "total": 9
+      },
+      "goal": {
+        "pass": 2,
+        "total": 2
+      },
+      "playthrough": {
+        "pass": 0,
+        "total": 1
+      },
+      "timing": {
+        "pass": 2,
+        "total": 2
+      },
+      "horizontal": {
+        "pass": 6,
+        "total": 6
+      },
+      "deceleration": {
+        "pass": 6,
+        "total": 6
+      },
+      "vertical": {
+        "pass": 13,
+        "total": 13
+      },
+      "pmeter": {
+        "pass": 3,
+        "total": 3
+      },
+      "stomp": {
+        "pass": 4,
+        "total": 4
+      },
+      "visual-style": {
+        "pass": 0,
+        "total": 4
+      },
+      "visual-sprites": {
+        "pass": 0,
+        "total": 5
+      },
+      "visual-motion": {
+        "pass": 0,
+        "total": 6
+      }
+    },
+    "failing": [
+      "playthrough: a lookahead planner can finish World 1-1 before the timer ends",
+      "visual-style: V1 the course start renders a colourful, non-blank scene",
+      "visual-style: V2 whole-screen palette stays within an NES-like budget (no gradients, no anti-aliasing)",
+      "visual-style: V2b the same budget holds at the goal (dark area, card box, clear banner)",
+      "visual-style: V3 sprite sheet contract: sizes, binary alpha, small per-sprite palettes",
+      "visual-sprites: V4 hero poses are all different images (idle, walk x2, jump, skid, dead)",
+      "visual-sprites: V5 hero art fills its hitbox (16x16 small, 16x32 big)",
+      "visual-sprites: V6 on screen the hero is drawn inside its physics box (small and big)",
+      "visual-sprites: V7 facing left mirrors facing right",
+      "visual-sprites: V8 every enemy type renders and the types look different from each other",
+      "visual-motion: V9 rendering is deterministic: same inputs, identical pixels",
+      "visual-motion: V10 the camera scrolls with the hero while the HUD stays put",
+      "visual-motion: V11 HUD text has WCAG contrast of at least 4.5 against its bar",
+      "visual-motion: V12 walking cycles the walk frames and a jump shows the jump pose",
+      "visual-motion: V13 reversing at speed shows a distinct skid pose",
+      "visual-motion: V14 the big hero is drawn 32 px tall"
+    ],
+    "url": "/iterations/iter-01/index.html"
+  },
+  {
+    "iter": "iter-02",
+    "label": "fairer ledge landing",
+    "pass": 71,
+    "total": 87,
+    "groups": {
+      "course-frame": {
+        "pass": 5,
+        "total": 5
+      },
+      "course-layout": {
+        "pass": 11,
+        "total": 11
+      },
+      "enemies": {
+        "pass": 10,
+        "total": 10
+      },
+      "blocks": {
+        "pass": 9,
+        "total": 9
+      },
+      "goal": {
+        "pass": 2,
+        "total": 2
+      },
+      "playthrough": {
+        "pass": 0,
+        "total": 1
+      },
+      "timing": {
+        "pass": 2,
+        "total": 2
+      },
+      "horizontal": {
+        "pass": 6,
+        "total": 6
+      },
+      "deceleration": {
+        "pass": 6,
+        "total": 6
+      },
+      "vertical": {
+        "pass": 13,
+        "total": 13
+      },
+      "pmeter": {
+        "pass": 3,
+        "total": 3
+      },
+      "stomp": {
+        "pass": 4,
+        "total": 4
+      },
+      "visual-style": {
+        "pass": 0,
+        "total": 4
+      },
+      "visual-sprites": {
+        "pass": 0,
+        "total": 5
+      },
+      "visual-motion": {
+        "pass": 0,
+        "total": 6
+      }
+    },
+    "failing": [
+      "playthrough: a lookahead planner can finish World 1-1 before the timer ends",
+      "visual-style: V1 the course start renders a colourful, non-blank scene",
+      "visual-style: V2 whole-screen palette stays within an NES-like budget (no gradients, no anti-aliasing)",
+      "visual-style: V2b the same budget holds at the goal (dark area, card box, clear banner)",
+      "visual-style: V3 sprite sheet contract: sizes, binary alpha, small per-sprite palettes",
+      "visual-sprites: V4 hero poses are all different images (idle, walk x2, jump, skid, dead)",
+      "visual-sprites: V5 hero art fills its hitbox (16x16 small, 16x32 big)",
+      "visual-sprites: V6 on screen the hero is drawn inside its physics box (small and big)",
+      "visual-sprites: V7 facing left mirrors facing right",
+      "visual-sprites: V8 every enemy type renders and the types look different from each other",
+      "visual-motion: V9 rendering is deterministic: same inputs, identical pixels",
+      "visual-motion: V10 the camera scrolls with the hero while the HUD stays put",
+      "visual-motion: V11 HUD text has WCAG contrast of at least 4.5 against its bar",
+      "visual-motion: V12 walking cycles the walk frames and a jump shows the jump pose",
+      "visual-motion: V13 reversing at speed shows a distinct skid pose",
+      "visual-motion: V14 the big hero is drawn 32 px tall"
+    ],
+    "url": "/iterations/iter-02/index.html"
+  },
+  {
+    "iter": "iter-03",
+    "label": "pixel-art sprites + visual verification suite",
+    "pass": 86,
+    "total": 87,
+    "groups": {
+      "course-frame": {
+        "pass": 5,
+        "total": 5
+      },
+      "course-layout": {
+        "pass": 11,
+        "total": 11
+      },
+      "enemies": {
+        "pass": 10,
+        "total": 10
+      },
+      "blocks": {
+        "pass": 9,
+        "total": 9
+      },
+      "goal": {
+        "pass": 2,
+        "total": 2
+      },
+      "playthrough": {
+        "pass": 0,
+        "total": 1
+      },
+      "timing": {
+        "pass": 2,
+        "total": 2
+      },
+      "horizontal": {
+        "pass": 6,
+        "total": 6
+      },
+      "deceleration": {
+        "pass": 6,
+        "total": 6
+      },
+      "vertical": {
+        "pass": 13,
+        "total": 13
+      },
+      "pmeter": {
+        "pass": 3,
+        "total": 3
+      },
+      "stomp": {
+        "pass": 4,
+        "total": 4
+      },
+      "visual-style": {
+        "pass": 4,
+        "total": 4
+      },
+      "visual-sprites": {
+        "pass": 5,
+        "total": 5
+      },
+      "visual-motion": {
+        "pass": 6,
+        "total": 6
+      }
+    },
+    "failing": [
+      "playthrough: a lookahead planner can finish World 1-1 before the timer ends"
+    ],
+    "url": "/iterations/iter-03/index.html"
+  },
+  {
+    "iter": "iter-04",
+    "label": "planner hooks: completability proven by search",
+    "pass": 87,
+    "total": 87,
+    "groups": {
+      "course-frame": {
+        "pass": 5,
+        "total": 5
+      },
+      "course-layout": {
+        "pass": 11,
+        "total": 11
+      },
+      "enemies": {
+        "pass": 10,
+        "total": 10
+      },
+      "blocks": {
+        "pass": 9,
+        "total": 9
+      },
+      "goal": {
+        "pass": 2,
+        "total": 2
+      },
+      "playthrough": {
+        "pass": 1,
+        "total": 1
+      },
+      "timing": {
+        "pass": 2,
+        "total": 2
+      },
+      "horizontal": {
+        "pass": 6,
+        "total": 6
+      },
+      "deceleration": {
+        "pass": 6,
+        "total": 6
+      },
+      "vertical": {
+        "pass": 13,
+        "total": 13
+      },
+      "pmeter": {
+        "pass": 3,
+        "total": 3
+      },
+      "stomp": {
+        "pass": 4,
+        "total": 4
+      },
+      "visual-style": {
+        "pass": 4,
+        "total": 4
+      },
+      "visual-sprites": {
+        "pass": 5,
+        "total": 5
+      },
+      "visual-motion": {
+        "pass": 6,
+        "total": 6
+      }
+    },
+    "failing": [],
+    "url": "/iterations/iter-04/index.html"
+  },
+  {
+    "iter": "iter-05",
+    "label": "12-pose original hero + new proportions + hero visual tests (current build: repo root)",
+    "pass": 91,
+    "total": 91,
+    "groups": {
+      "course-frame": {
+        "pass": 5,
+        "total": 5
+      },
+      "course-layout": {
+        "pass": 11,
+        "total": 11
+      },
+      "enemies": {
+        "pass": 10,
+        "total": 10
+      },
+      "blocks": {
+        "pass": 9,
+        "total": 9
+      },
+      "goal": {
+        "pass": 2,
+        "total": 2
+      },
+      "playthrough": {
+        "pass": 1,
+        "total": 1
+      },
+      "timing": {
+        "pass": 2,
+        "total": 2
+      },
+      "horizontal": {
+        "pass": 6,
+        "total": 6
+      },
+      "deceleration": {
+        "pass": 6,
+        "total": 6
+      },
+      "vertical": {
+        "pass": 13,
+        "total": 13
+      },
+      "pmeter": {
+        "pass": 3,
+        "total": 3
+      },
+      "stomp": {
+        "pass": 4,
+        "total": 4
+      },
+      "visual-style": {
+        "pass": 4,
+        "total": 4
+      },
+      "visual-sprites": {
+        "pass": 5,
+        "total": 5
+      },
+      "visual-motion": {
+        "pass": 6,
+        "total": 6
+      },
+      "visual-hero": {
+        "pass": 4,
+        "total": 4
+      }
+    },
+    "failing": [],
+    "url": "/index.html",
+    "current": true
+  }
+]
