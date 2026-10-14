@@ -13,6 +13,10 @@ and no runtime dependency.
 
 ## Play it
 
+**Play online: <https://kilhage.github.io/courier/>**. Earlier builds are at `/iterations/iter-NN/`.
+
+Or run it locally:
+
 ```bash
 git clone <this repo> courier && cd courier
 npm start                      # serves the repo root on http://127.0.0.1:4173/
