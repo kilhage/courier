@@ -45,6 +45,15 @@ Add `?debug` to the URL for a frame/velocity readout.
 - **All iterations** (`iterations/`): frozen, playable snapshots of earlier builds with their scores, so you can
   see how the build improved and replay any step. The newest iteration is the repo root.
 
+## Host it for free
+
+The game is a static site, so any static host works. Two ready-made options:
+
+- **GitHub Pages**: in the repo, *Settings → Pages → Source: GitHub Actions*. The `deploy-pages` workflow publishes the
+  game and `iterations/` on every push to `main` at `https://<user>.github.io/<repo>/`.
+- **Vercel**: *Add New → Project → import the repo*, leave every build setting empty (`vercel.json` handles it) and
+  deploy. Netlify and Cloudflare Pages work the same way: no build command, publish directory `.`.
+
 ## Verify it
 
 ```bash
